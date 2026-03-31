@@ -2,15 +2,18 @@ import streamlit as st
 import pandas as pd
 import joblib
 import matplotlib.pyplot as plt
-from sklearn.metrics import PrecisionRecallDisplay
-from sklearn.metrics import ConfusionMatrixDisplay
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import precision_recall_curve
+import plotly.graph_objects as go
 import plotly.express as px
+from sklearn.metrics import average_precision_score
 
 
 st.title("💳 Credit Card Fraud Detection Dashboard")
 
-model = joblib.load("LogReg.pkl")
+model = joblib.load("xgb_ros.pkl")
 scaler = joblib.load("scaler.pkl")
+X_test, y_test = joblib.load("test_data.pkl")
 
 df = pd.read_csv('creditcard.csv')
 df_train_ros = pd.read_csv("train_ros.csv")
@@ -83,8 +86,57 @@ st.plotly_chart(fig_featImpor)
 df["Fraud Prediction"] = predictions
 df["Fraud Probability"] = probabilities
 
-fraud_count = df["Fraud Prediction"].sum()
 
 st.subheader("Predictions")
 st.write(df)
-st.metric("Detected Fraud Transactions", fraud_count)
+
+y_pred = model.predict(X_test)
+pr_auc = average_precision_score(y_test, y_pred)
+
+cm = confusion_matrix(y_test, y_pred)
+
+fig_cm = px.imshow(
+    cm,
+    text_auto=True,
+    labels=dict(x="Predicted", y="Actual"),
+    x=['Legit', 'Fraud'],
+    y=['Legit', 'Fraud'],
+    title="Confusion Matrix"
+)
+
+precision, recall, thresholds = precision_recall_curve(y_test, y_pred)
+
+fig_PR = go.Figure()
+
+fig_PR.add_trace(go.Scatter(
+    x=recall,
+    y=precision,
+    mode='lines',
+    name='PR Curve'
+))
+
+fig_PR.add_annotation(
+    x=0.98,
+    y=0.02,
+    xref="paper",
+    yref="paper",
+    text=f"PR-AUC = {pr_auc:.2f}",
+    showarrow=False
+)
+
+fig_PR.update_layout(
+    title="Precision-Recall Curve",
+    xaxis_title="Recall",
+    yaxis_title="Precision"
+)
+
+col1_CM, col2_PR = st.columns(2)
+
+with col1_CM:
+    st.subheader("Confusion Matrix")
+    st.plotly_chart(fig_cm)
+
+with col2_PR:
+    st.subheader("Precision-Recall Curve")
+    st.plotly_chart(fig_PR)
+
