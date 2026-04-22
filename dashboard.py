@@ -158,7 +158,7 @@ with tab1:
     fig.update_layout(yaxis=dict(autorange="reversed"))
 
     st.plotly_chart(fig)
-    with st.expander("Feature Distribution Explanation"):
+    with st.expander("Feature Importance Explanation"):
         st.markdown("""
         **What this shows:**  
         This chart ranks features based on their importance in the model’s predictions.
